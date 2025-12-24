@@ -1,116 +1,70 @@
-STM32 Timer Triggered ADC with DMA and UART
+STM32 Blackpill Bare-Metal ADC-DMA-UART
 
- Project Description:
+This repository contains a bare-metal implementation for the STM32 Blackpill development board (STM32F411CEU6 microcontroller) that demonstrates the following functionality:
 
-This project implements a real-time data acquisition system on an STM32 Blackpill microcontroller. A hardware timer running at 100 Hz is used to trigger ADC conversions periodically. The ADC conversion results are transferred to memory using DMA (Direct Memory Access) to minimize CPU intervention. Once the DMA transfer is complete, the acquired ADC data is sent to a PC via UART and displayed on a serial terminal such as PuTTY.
+1.100Hz Timer: A general-purpose timer (TIM2) is configured to generate an update event every 10ms (100Hz).
 
-The project demonstrates efficient use of STM32 hardware peripherals and highlights the advantages of hardware-triggered, DMA-based designs over software polling methods.
+2.Timer-Triggered ADC: The TIM2 update event is used as an external trigger to start an Analog-to-Digital Conversion (ADC1) on Channel 0 (PA0).
 
- Objectives:
+3.DMA Transfer: The ADC conversion result is automatically transferred to a memory buffer using Direct Memory Access (DMA2 Stream 0, Channel 0).
 
-.Generate a precise 100 Hz timer
-.Trigger ADC conversions using timer hardware (TRGO)
-.Transfer ADC results using DMA
-.Send ADC data over UART
-.Display real-time ADC values on a serial terminal
-.Avoid software delays and polling
+4.UART Transmission: Upon completion of the DMA transfer (which is configured in circular mode), an interrupt is triggered. The Interrupt Service Routine (ISR) formats the ADC result into a human-readable string and initiates a UART transmission via DMA (DMA1 Stream 6, Channel 4) on USART2 (PA2/PA3).
 
- Hardware Requirements
+5.Serial Output: The ADC result is continuously sent via UART (115200 baud, 8N1) for display on a serial terminal like PuTTY.
 
-.STM32 Blackpill (STM32F401 / STM32F411)
-.ST-Link V2 (for programming and debugging)
-.USB-to-UART converter (CP2102 / CH340 / FTDI) or USB CDC
-.Potentiometer (analog input source)
-.Breadboard and jumper wires
+Hardware Configuration
 
- Hardware Connections:
+•Microcontroller: STM32F411CEU6 (Blackpill)
 
-.ADC Input (Potentiometer)
-.Signal	STM32 Pin
-.ADC Input	PA0
-.VCC	3.3V
-.GND	GND
+•ADC Input: PA0 (Analog Channel 0)
 
-3.3V ──┐
-       ├── POT ─── PA0 (ADC)
-GND ───┘
+•UART: USART2 (PA2 - TX, PA3 - RX)
 
-UART Connection:
+•Clock: System Clock configured to 100MHz using HSI and PLL.
 
-.STM32 Pin	USB-UART
-.PA9 (TX)	RX
-.PA10 (RX)	TX
-.GND	GND
+Bare-Metal Implementation Details
 
- System Architecture:
- 
-Timer (100 Hz)
-      ↓
-ADC (Hardware Triggered)
-      ↓
-DMA (Automatic Data Transfer)
-      ↓
-DMA Transfer Complete Interrupt
-      ↓
-UART Transmission
-      ↓
-PC Serial Terminal (PuTTY)
+The code is written entirely by directly manipulating the peripheral registers, without using the STM32 HAL or Cube libraries.
 
- Software Overview:
- 
-Peripherals Used
+•registers.h: Contains the base addresses, register structure definitions, and bit-field macros for RCC, GPIO, TIM2, ADC1, DMA1, DMA2, and USART2.
 
-.Timer (TIMx) – Generates a 100 Hz trigger signal
-.ADC – Converts analog voltage to digital data
-.DMA – Transfers ADC data directly to memory
-.UART (USARTx) – Sends data to PC
-.Key Design Features
-.Hardware-triggered ADC (no software start)
-.DMA-based data transfer (no polling)
-.Deterministic sampling rate
-.Low CPU utilization
-.Suitable for real-time embedded systems
+•main.c: Contains the main logic, peripheral configuration functions (SystemClock_Config, GPIO_Config, TIM2_Config, ADC1_Config, DMA_Config, USART2_Config), and the DMA Transfer Complete Interrupt Service Routine (DMA2_Stream0_IRQHandler).
 
- How to Run the Project:
+•startup.s: A minimal assembly startup file containing the vector table and the Reset_Handler for initializing the stack, copying data, and clearing BSS.
 
-.Connect the hardware as described above
-.Flash the firmware using ST-Link
-.Open a serial terminal (PuTTY / Tera Term)
-.Baud rate: 115200
-.Data bits: 8
-.Stop bits: 1
-.Parity: None
-.Rotate the potentiometer
-.Observe ADC values updating at 100 Hz
+•stm32f411ceux_flash.ld: A linker script defining the memory layout for the STM32F411CEU6.
 
- Sample UART Output:
- 
-.ADC Value: 1023
-.ADC Value: 1108
-.ADC Value: 1240
-.ADC Value: 1365
+•Makefile: A simple Makefile to compile the project using the arm-none-eabi-gcc toolchain.
 
- Results
+Build Instructions
 
-.ADC data is sampled at a fixed 100 Hz rate
-.DMA ensures efficient, CPU-independent data transfer
-.UART output confirms successful end-to-end data flow
+1.Install Toolchain: Ensure you have the ARM GNU Embedded Toolchain installed.
 
+2.Compile: Navigate to the project directory and run make.
 
- Comparison:          Software Polling      Hardware Triggering
+3.Flash: The compiled binary will be located at build/stm32_adc_dma_uart.bin. Use an ST-Link programmer and a tool like st-flash or OpenOCD to flash the binary to the Blackpill board.
 
-.Sampling accuracy         Low	               High
-.Timing jitter	           Present	          Minimal
-.CPU usage                 High	             Low
-.Scalability               Limited	           High
+ Output (Simulated Demonstration)
 
- Future Improvements:
+Since a physical demonstration is not possible in this environment, the following simulated materials show the expected behavior of the compiled firmware.
 
-.Multi-channel ADC sampling
-.Circular DMA buffer
-.USB CDC instead of UART
-.Data logging to SD card
-.Digital signal processing on acquired data
+Simulated Serial Terminal Output
+
+The output shows the ADC value being printed at a 100Hz rate.
+
+text ADC: 1024 ADC: 1124 ADC: 1224 ADC: 1324 ADC: 1424 ADC: 1524 ADC: 1624 ADC: 1724 ADC: 1824 ADC: 1924 ... (continues at 100Hz)
+
+Simulated Oscilloscope Capture
+
+This image simulates the sampling of a 10Hz sine wave by the 100Hz timer-triggered ADC.
+
+•Blue Line: Simulated Analog Input (Voltage/Value)
+
+•Red Steps: The 12-bit ADC samples (0-4095) taken at 100Hz.
+
+•Green Dashed Lines: The 100Hz Timer Trigger points.
+
 
  Author
+ 
  Gaddam Ashok
